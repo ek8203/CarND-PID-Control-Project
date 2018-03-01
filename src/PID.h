@@ -13,9 +13,15 @@ public:
   /*
   * Coefficients
   */ 
-  double Kp;
-  double Ki;
-  double Kd;
+  double Kp_;
+  double Ki_;
+  double Kd_;
+
+  // error update step number
+  int n_step;
+
+  // square average total error
+  double total_error;
 
   /*
   * Constructor
@@ -41,6 +47,12 @@ public:
   * Calculate the total PID error.
   */
   double TotalError();
+
+  /*
+   * Calculate PID output
+   */
+  double GetOutput();
+
 };
 
 #endif /* PID_H */
