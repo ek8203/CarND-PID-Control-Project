@@ -46,12 +46,12 @@ void PID::UpdateError(double cte) {
 
 double PID::TotalError() {
 
-  return total_error;
+  return Kp_*p_error + Kd_*d_error + Ki_*i_error;
 }
 
 double PID::GetOutput() {
 
-  double output = -Kp_*p_error - Kd_*d_error - Ki_*i_error;
+  double output = -TotalError();
 
   // check the limits [-1,1]
   if(output > 1.0)

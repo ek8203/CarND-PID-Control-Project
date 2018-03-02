@@ -4,6 +4,7 @@
 #include "PID.h"
 #include <math.h>
 #include <string>
+#include <fstream>
 
 // for convenience
 using json = nlohmann::json;
@@ -80,9 +81,20 @@ int main(int argc, const char * argv[])
 
   // speed control
   PID speed_pid;
-  speed_pid.Init(0.1, 0.01, 0);
+  speed_pid.Init(0.1, 0.001, 0);
 
-  h.onMessage([&pid, &speed_pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  // Save results in a file
+  ofstream fout;
+  const string  fname = "../data/pid_output.txt";
+
+  fout.open(fname);
+
+  if (!fout.is_open()) {
+    cout << "Unable to open output file " << fname << endl;
+    return -1;
+  }
+
+  h.onMessage([&pid, &speed_pid, &fout](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -121,6 +133,9 @@ int main(int argc, const char * argv[])
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
+          // save results
+          fout << cte << "\t" << angle << "\t" << pid.TotalError() <<"\t" << steer_value << endl;
         }
       } else {
         // Manual driving
@@ -162,7 +177,11 @@ int main(int argc, const char * argv[])
   else
   {
     std::cerr << "Failed to listen to port" << std::endl;
+    fout.close();
     return -1;
   }
   h.run();
+
+  fout.close();
+  cout <<"Results saved in file " << fname << endl;
 }
