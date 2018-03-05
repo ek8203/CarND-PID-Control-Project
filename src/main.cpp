@@ -15,8 +15,6 @@ constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
 
-const double  target_speed = 20.0;
-
 void reset_sim(uWS::WebSocket<uWS::SERVER> ws)  {
 
   std::string msg = "42[\"reset\",{}]";
@@ -45,24 +43,27 @@ int main(int argc, const char * argv[])
 
   PID pid;
   // TODO: Initialize the pid variable.
-  double Kp = 0.07;
-  double Kd = 0.7;
-  double Ki = 0.0001;
+  double Kp = 0.24;
+  double Ki = 0.016;
+  double Kd = 0.86;
+  double  target_speed = 10.0;
 
-  // Get command string parameters
+  // Get command string parameters: target speed, Kp, Ki, Kd
   if(argc > 1) {
     try {
-      Kp = stof(argv[1]);
+      target_speed = stof(argv[1]);
     } catch (...)  {
-      cout << "Kp" << endl;
+      cout << "target_speed" << endl;
       return -1;
     }
   }
+  cout << "Traget Speed = " << target_speed << endl;
+
   if(argc > 2) {
     try {
-      Kd = stof(argv[2]);
+      Kp = stof(argv[2]);
     } catch (...)  {
-      cout << "Kd" << endl;
+      cout << "Kp" << endl;
       return -1;
     }
   }
@@ -74,14 +75,22 @@ int main(int argc, const char * argv[])
       return -1;
     }
   }
+  if(argc > 4) {
+    try {
+      Kd = stof(argv[4]);
+    } catch (...)  {
+      cout << "Kd" << endl;
+      return -1;
+    }
+  }
 
   // init PID controller
   pid.Init(Kp, Ki, Kd);
-  cout << "Kp: " << pid.Kp_ << " Kd: " << pid.Kd_ << " Ki: " << pid.Ki_ << endl;
+  cout << "Kp: " << pid.Kp_ << " Ki: " << pid.Ki_ << " Kd: " << pid.Kd_ << endl;
 
   // speed control
   PID speed_pid;
-  speed_pid.Init(0.1, 0.001, 0);
+  speed_pid.Init(0.1, 0.02, 0);
 
   // Save results in a file
   ofstream fout;
@@ -94,7 +103,7 @@ int main(int argc, const char * argv[])
     return -1;
   }
 
-  h.onMessage([&pid, &speed_pid, &fout](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&pid, &speed_pid, &fout, &target_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -117,15 +126,14 @@ int main(int argc, const char * argv[])
           * another PID controller to control the speed!
           */
           pid.UpdateError(cte);
-          steer_value = pid.GetOutput();
+          steer_value = -pid.TotalError();
+
+          // DEBUG
+          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " Angle: " << angle << std::endl;
 
           // speed control
           speed_pid.UpdateError(speed - target_speed);
-          double throttle = speed_pid.GetOutput();
-
-          // DEBUG
-          cout << "angle: " << angle << " t.error: " << pid.TotalError() << endl;
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          double throttle = -speed_pid.TotalError();
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
@@ -135,7 +143,7 @@ int main(int argc, const char * argv[])
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
           // save results
-          fout << cte << "\t" << angle << "\t" << pid.TotalError() <<"\t" << steer_value << endl;
+          fout << cte << "\t" << angle << "\t" << steer_value << endl;
         }
       } else {
         // Manual driving

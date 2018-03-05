@@ -1,4 +1,5 @@
 #include "PID.h"
+#include <math.h>
 
 using namespace std;
 
@@ -27,8 +28,7 @@ void PID::Init(double Kp, double Ki, double Kd) {
   d_error = 0;
 
   n_step = 0;
-  total_error = 0;
-
+  best_error = 0;
 }
 
 void PID::UpdateError(double cte) {
@@ -38,7 +38,15 @@ void PID::UpdateError(double cte) {
   p_error  = cte;
   i_error += cte;
 
-  if (n_step >= 100)  total_error += (cte * cte) / n_step;
+  // reset the I value if CTE is 0
+  if(cte == 0)
+    i_error = 0;
+
+  // limit max I-term to prevent wind-up
+  if(i_error > 1)  i_error = 1;
+  else if(i_error < -1)  i_error = -1;
+
+  if (n_step >= 100)  best_error += (cte * cte) / n_step;
 
   n_step++;
 

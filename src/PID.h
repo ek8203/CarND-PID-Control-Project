@@ -20,8 +20,8 @@ public:
   // error update step number
   int n_step;
 
-  // square average total error
-  double total_error;
+  // square average error
+  double best_error;
 
   /*
   * Constructor
