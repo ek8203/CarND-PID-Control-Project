@@ -22,6 +22,12 @@ public:
 
   // square average error
   double best_error;
+  double sum_error;
+
+  // twiddle params
+  int twiddle_state;
+  double  dp[3];
+  int p_idx;
 
   /*
   * Constructor
@@ -53,6 +59,10 @@ public:
    */
   double GetOutput();
 
+  /*
+   * Parameter Optimization
+   */
+  bool Twiddle(double tolerance);
 };
 
 #endif /* PID_H */
