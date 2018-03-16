@@ -48,16 +48,16 @@ int main(int argc, const char * argv[])
   //double Ki = 0.016;
   //double Kd = 0.86;
   // For 20 mph
-  double Kp = 0.131835; //0.15
-  double Ki = 0.0435481;  //0.015
-  double Kd = 0.765783; //0.75;
+  double Kp = 0.15;
+  double Ki = 0.015;
+  double Kd = 0.75;
   // For 30 mph
   //double Kp = 0.0869;
   //double Ki = 0.0189;
   //double Kd = 0.46;
 
   double  target_speed = 0.;
-  double  max_speed = 22.;
+  double  max_speed = 20.;
   bool is_twiddle = false;
 
 
@@ -70,7 +70,10 @@ int main(int argc, const char * argv[])
       return -1;
     }
   }
-  cout << "Traget Speed = " << target_speed << endl;
+  if(target_speed != 0)
+    cout << "Traget Speed = " << target_speed << endl;
+  else
+    cout << "Max Speed = " << max_speed << endl;
 
   if(argc > 2) {
     try {
@@ -116,8 +119,7 @@ int main(int argc, const char * argv[])
 
   // speed control
   PID speed_pid;
-  //speed_pid.Init(0.22, 0, 0);
-  speed_pid.Init(0.132, 0.2, 0.123);
+  speed_pid.Init(0.1, 0.07, 0.13);
 
   // Save results in a file
   ofstream fout;
