@@ -43,10 +43,23 @@ int main(int argc, const char * argv[])
 
   PID pid;
   // TODO: Initialize the pid variable.
-  double Kp = 0.24;
-  double Ki = 0.016;
-  double Kd = 0.86;
-  double  target_speed = 10.0;
+  // For 10 mph
+  //double Kp = 0.24;
+  //double Ki = 0.016;
+  //double Kd = 0.86;
+  // For 20 mph
+  double Kp = 0.131835; //0.15
+  double Ki = 0.0435481;  //0.015
+  double Kd = 0.765783; //0.75;
+  // For 30 mph
+  //double Kp = 0.0869;
+  //double Ki = 0.0189;
+  //double Kd = 0.46;
+
+  double  target_speed = 0.;
+  double  max_speed = 22.;
+  bool is_twiddle = false;
+
 
   // Get command string parameters: target speed, Kp, Ki, Kd
   if(argc > 1) {
@@ -61,23 +74,36 @@ int main(int argc, const char * argv[])
 
   if(argc > 2) {
     try {
-      Kp = stof(argv[2]);
+      int tw = stof(argv[2]);
+      if(tw == 1) {
+        is_twiddle = true;
+      }
+    } catch (...)  {
+      cout << "twiddle" << endl;
+      return -1;
+    }
+  }
+  cout << "twiddle = " << is_twiddle << endl;
+
+  if(argc > 3) {
+    try {
+      Kp = stof(argv[3]);
     } catch (...)  {
       cout << "Kp" << endl;
       return -1;
     }
   }
-  if(argc > 3) {
+  if(argc > 4) {
     try {
-      Ki = stof(argv[3]);
+      Ki = stof(argv[4]);
     } catch (...)  {
       cout << "Ki" << endl;
       return -1;
     }
   }
-  if(argc > 4) {
+  if(argc > 5) {
     try {
-      Kd = stof(argv[4]);
+      Kd = stof(argv[5]);
     } catch (...)  {
       cout << "Kd" << endl;
       return -1;
@@ -90,7 +116,8 @@ int main(int argc, const char * argv[])
 
   // speed control
   PID speed_pid;
-  speed_pid.Init(0.1, 0.02, 0);
+  //speed_pid.Init(0.22, 0, 0);
+  speed_pid.Init(0.132, 0.2, 0.123);
 
   // Save results in a file
   ofstream fout;
@@ -103,7 +130,7 @@ int main(int argc, const char * argv[])
     return -1;
   }
 
-  h.onMessage([&pid, &speed_pid, &fout, &target_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  h.onMessage([&pid, &speed_pid, &fout, &target_speed, &is_twiddle, &max_speed](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -126,24 +153,41 @@ int main(int argc, const char * argv[])
           * another PID controller to control the speed!
           */
           pid.UpdateError(cte);
+
+          if (is_twiddle == true) {
+
+            if(pid.Twiddle(0.1) == true)
+              reset_sim(ws);
+
+            cout << "Step: " << pid.n_step << " State: " << pid.twiddle_state << " B.Error: " << pid.best_error;
+            cout << " Kp: " << pid.Kp_ << " Ki: " << pid.Ki_ << " Kd: " << pid.Kd_ << endl;
+          }
+
           steer_value = -pid.TotalError();
 
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " Angle: " << angle << std::endl;
+          if (is_twiddle == false)
+            std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " Angle: " << angle << std::endl;
 
           // speed control
-          speed_pid.UpdateError(speed - target_speed);
-          double throttle = -speed_pid.TotalError();
+          double throttle = 0.3; // default - no speed control
+          if(target_speed != 0) {
+            speed_pid.UpdateError(speed - target_speed);
+            throttle = -speed_pid.TotalError();
+          }
+          else if (speed > max_speed) {
+            target_speed = max_speed;
+          }
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle; //0.3;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          //std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
           // save results
-          fout << cte << "\t" << angle << "\t" << steer_value << endl;
+          fout << cte << "\t" << angle << "\t" << steer_value << "\t" << speed << endl;
         }
       } else {
         // Manual driving
